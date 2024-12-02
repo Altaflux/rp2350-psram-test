@@ -27,7 +27,7 @@ static ALLOCATOR: Heap = Heap::empty();
 use panic_halt as _;
 
 // Alias for our HAL crate
-use rp235x_hal as hal;
+use rp235x_hal::{self as hal, Clock};
 
 // Some things we need
 use embedded_hal::delay::DelayNs;
@@ -49,8 +49,13 @@ const XTAL_FREQ_HZ: u32 = 12_000_000u32;
 ///
 /// The function configures the RP2350 peripherals, then blinks the LED in an
 /// infinite loop where the duration indicates how many items were allocated.
+
+mod psram;
+
 #[hal::entry]
 fn main() -> ! {
+
+    
     {
         use core::mem::MaybeUninit;
         const HEAP_SIZE: usize = 1024;
@@ -91,6 +96,14 @@ fn main() -> ! {
         sio.gpio_bank0,
         &mut pac.RESETS,
     );
+
+    let _ = pins.gpio47.into_function::<hal::gpio::FunctionXipCs1>();
+    let psram_size = psram::psram_init(
+        clocks.peripheral_clock.freq().to_Hz(),
+        &pac.QMI,
+        &pac.XIP_CTRL,
+    );
+
 
     // Configure GPIO25 as an output
     let mut led_pin = pins.gpio25.into_push_pull_output();
