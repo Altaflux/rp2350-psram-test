@@ -55,13 +55,7 @@ mod psram;
 #[hal::entry]
 fn main() -> ! {
 
-    
-    {
-        use core::mem::MaybeUninit;
-        const HEAP_SIZE: usize = 1024;
-        static mut HEAP: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
-        unsafe { ALLOCATOR.init(core::ptr::addr_of_mut!(HEAP) as usize, HEAP_SIZE) }
-    }
+
 
     // Grab our singleton objects
     let mut pac = hal::pac::Peripherals::take().unwrap();
@@ -97,13 +91,19 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
+    //PSRAM INITIALIZATION
     let _ = pins.gpio47.into_function::<hal::gpio::FunctionXipCs1>();
     let psram_size = psram::psram_init(
         clocks.peripheral_clock.freq().to_Hz(),
         &pac.QMI,
         &pac.XIP_CTRL,
     );
-
+    
+    //USE PSRAM AS HEAP SPACE
+    {
+        const PSRAM_ADDRESS: usize = 0x11000000;
+        unsafe { ALLOCATOR.init(PSRAM_ADDRESS, psram_size as usize) }
+    }
 
     // Configure GPIO25 as an output
     let mut led_pin = pins.gpio25.into_push_pull_output();
